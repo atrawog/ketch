@@ -1,0 +1,6 @@
+---
+
+- include: user.yml
+- include: repo.yml
+- include: tools.yml
+#- include: thinpool.yml

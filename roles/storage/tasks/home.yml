@@ -1,0 +1,28 @@
+- name: LVThin "{{ vg }}/{{ tpool }}/home"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: home
+    size: "{{ home_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS home
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/home"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /home
+  mount:
+    name: /home
+    src: "/dev/{{ vg }}/home"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Permission /home 
+  file:
+    path: /home
+    owner: "{{ admin }}"

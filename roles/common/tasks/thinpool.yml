@@ -1,0 +1,7 @@
+- stat:
+    path: "/dev/mapper/{{ vg }}-{{ tpool }}"
+  register: thinpool
+  
+- debug:
+    msg: "Thinpool present"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk

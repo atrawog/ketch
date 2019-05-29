@@ -1,0 +1,31 @@
+
+    
+- name: Make sure we have a 'wheel' group
+  group:
+    name: wheel
+    state: present
+
+- name: Allow 'wheel' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%wheel'
+    line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+    validate: visudo -cf %s
+    
+- name: Add user "{{ admin }}"
+  user:
+    name: "{{ admin }}"
+    comment: "{{ admin }}"
+    uid: 1000
+    group: users
+    groups: wheel
+    append: yes
+    create_home: yes
+    
+- name: Add "{{ admin }}" ssh key
+  authorized_key:
+    user: "{{ admin }}"
+    state: present
+    manage_dir: yes
+    key: "{{ lookup('file', '/home/{{ admin }}/.ssh/id_rsa.pub') }}"

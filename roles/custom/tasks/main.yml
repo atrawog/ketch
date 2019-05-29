@@ -1,0 +1,4 @@
+---
+- include: network_a.yml
+  when: inventory_hostname == 'a'
+

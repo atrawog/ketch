@@ -1,0 +1,8 @@
+---
+- name: Check if in rescue mode
+  stat:
+    path: /root/.oldroot/nfs/install/installimage
+  register: rescue
+  
+- include: hetzner-server_install.yml
+  when: rescue.stat.exists and rescue_install|bool

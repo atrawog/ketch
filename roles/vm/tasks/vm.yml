@@ -1,0 +1,15 @@
+- name: Cloud Utils
+  dnf:
+    name:
+      - cloud-utils
+      - virt-install
+      - virt-viewer
+      - libguestfs-tools
+      - pykickstart
+      - pwkickstart
+
+#- name: Download Centos7 GenericCloud
+#  get_url:
+#    url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1901.qcow2
+#    dest: /var/lib/libvirt/images/CentOS-7-x86_64-GenericCloud-1901.qcow2
+#    checksum: sha256:76050d4624210954929d9d7a97a98611619a5fd02067fd7737e26f5a3a5e5333

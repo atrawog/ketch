@@ -1,0 +1,19 @@
+#
+# Hetzner Online GmbH - installimage
+#
+# This file contains the configuration used to install this
+# system via installimage script. Comments have been removed.
+#
+# More information about the installimage script and
+# automatic installations can be found in our wiki:
+#
+# http://wiki.hetzner.de/index.php/Installimage
+#
+
+DRIVE1 /dev/sda
+BOOTLOADER grub
+HOSTNAME {{inventory_hostname_short}}
+PART /boot  ext3     {{boot_size}}
+PART lvm    {{vg}}       all
+LV {{vg}}   root   /        ext4         {{root_size}}
+IMAGE /root/.oldroot/nfs/install/../images/{{osimage}}

@@ -1,0 +1,71 @@
+- name: Installing centos-release-gluster6 
+  yum:
+    name: centos-release-gluster6
+    
+- name: Tools
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - glusterfs
+      - glusterfs-server
+
+
+
+- name: LVThin "{{ vg }}/{{ tpool }}/gluster"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: gluster
+    size: "{{ gluster_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS gluster
+  filesystem:
+    fstype: xfs
+    resizefs: yes
+    dev: "/dev/{{ vg }}/gluster"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /var/lib/gluster
+  mount:
+    name: /var/lib/gluster
+    src: "/dev/{{ vg }}/gluster"
+    fstype: xfs
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Start Gluster
+  service:
+    name: glusterd
+    state: started
+    enabled: yes
+       
+- name: Create a trusted storage pool
+  gluster_peer:
+    state: present
+    nodes:
+      - "{{ hostvars[item].ansible_default_ipv4.address }}"
+  with_items: "{{ groups['gluster'] }}"
+  
+#- name: Create "/dev/{{ vg }}/gluster/gv1"
+#  file:
+#    path: "/dev/{{ vg }}/gluster/gv1"
+#    state: directory
+  
+- name: create gluster volume
+  gluster_volume:
+    state: present
+    name: gvol1
+    bricks:  "/var/lib/gluster/gvol1"
+    rebalance: yes
+    cluster:
+      - "{{ hostvars[item].ansible_default_ipv4.address }}"
+  with_items: "{{ groups['gluster'] }}"
+  run_once: true
+  
+  
+  
+  
+  

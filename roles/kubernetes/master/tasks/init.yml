@@ -1,0 +1,73 @@
+---
+- name: initialize the cluster
+  shell: kubeadm init --pod-network-cidr=10.244.0.0/16 >> cluster_initialized.txt
+  args:
+    chdir: $HOME
+    creates: cluster_initialized.txt
+
+- name: create .kube directory
+  become: yes
+  become_user: "{{ admin }}"
+  file:
+    path: "/home/{{ admin }}/.kube"
+    state: directory
+    mode: 0755
+
+- name: copy admin.conf to user's kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ admin }}/.kube/config"
+    remote_src: yes
+    owner: atrawog
+    
+
+- name: install Pod network
+  become: yes
+  become_user: "{{ admin }}"
+  shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml >> pod_network_setup.txt
+  args:
+    chdir: $HOME
+    creates: pod_network_setup.txt
+
+- name: Restart kubelet
+  service:
+    name: kubelet
+    state: restarted
+    enabled: yes
+
+  
+- name: Create Join Command
+  become: yes
+  become_user: "{{ admin }}"
+  shell:  kubeadm token create --print-join-command >> kube_join.sh
+  args:
+    chdir: $HOME
+    creates: kube_join.sh
+ 
+ 
+- name: Delete old Fetch Join
+  file:
+    path: roles/kubernetes/master/files/kube_join.sh
+    state: absent
+  delegate_to: localhost
+    
+ 
+- name: Fetch Join Command
+  fetch:
+    src: "/home/{{ admin }}/kube_join.sh"
+    dest: roles/kubernetes/master/files/kube_join.sh
+    flat: yes
+
+- name: Delete old Kube Config
+  file:
+    path: roles/kubernetes/master/files/admin.conf
+    state: absent
+  delegate_to: localhost
+
+- name: Fetch Kube Config
+  fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: roles/kubernetes/master/files/admin.conf
+    flat: yes
+
+  

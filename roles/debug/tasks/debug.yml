@@ -1,0 +1,26 @@
+# name: Gluster host
+#  debug: msg="{{ item }}" 
+#  with_items:
+#    - "{{ groups['gluster'] }}"
+#
+#- name: Gluster host hostvars
+#  debug: msg="{{ hostvars[item] }}" 
+#  with_items:
+#    - "{{ groups['gluster'] }}"
+
+
+- name: HOSTVAR  "{{ ansible_hostname }}"
+  debug: msg="{{ hostvars[item] }}" 
+  with_items:
+    - "{{ ansible_hostname }}"
+
+
+- name: LVM  "{{ ansible_hostname }}" 
+  debug: msg="{{ ansible_lvm }}"
+  when: ansible_lvm is defined
+
+
+- name: VG  "{{ ansible_hostname }}" 
+  debug: msg="echo volume groups is  {{ item.key }} has {{ item.value.free_g }}" 
+  with_dict: "{{ ansible_lvm.vgs }}"
+  when: ansible_lvm is defined

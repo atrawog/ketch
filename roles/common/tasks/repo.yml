@@ -1,0 +1,8 @@
+- name: Installing Epel
+  yum:
+    name: epel-release
+  when: ansible_distribution == 'CentOS'
+
+- name: Enable Epel
+  shell:   yum-config-manager --enable epel
+  when: ansible_distribution == 'CentOS'

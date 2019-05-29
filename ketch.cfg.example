@@ -1,0 +1,9 @@
+[hetzner]
+username =
+password = 
+token =
+
+[cloudflare]
+domain = 
+username = 
+token = 

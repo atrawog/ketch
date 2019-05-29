@@ -1,0 +1,76 @@
+- name: Rpmfusion 
+  yum:
+    name: "{{ item }}"
+    state: present
+    disable_gpg_check: yes
+  with_items:
+    - https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-30.noarch.rpm 
+    - https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-30.noarch.rpm
+    - http://linuxdownload.adobe.com/adobe-release/adobe-release-x86_64-1.0-1.noarch.rpm
+    - http://linuxdownload.adobe.com/adobe-release/adobe-release-i386-1.0-1.noarch.rpm
+
+
+- name: Tools
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+     - geany
+     - geany-plugins-common
+     - python3-spyder
+     - python3-invoke
+     - geeqie
+     - "@core"
+     - "@multimedia"
+     - "@sound-and-video"
+     - "rpmfusion-free-release-tainted"
+     - "rpmfusion-nonfree-release-tainted"
+     - vlc
+     - avidemux
+     - gnome-tweaks
+     - keepass
+     - fedora-workstation-repositories
+     - https://www.dropbox.com/download?dl=packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
+     - oathtool
+     - Thunar
+     
+- name: Installing Chrome
+  dnf:
+    name:
+      - google-chrome-stable
+    enablerepo: google-chrome
+    
+- name: upgrade all packages
+  dnf:
+    name: "*"
+    state: latest
+
+- name: Use Python3
+  alternatives:
+    name: python
+    link: /usr/bin/python
+    path:  /usr/bin/python3.7
+    
+- name: Use Invoke3
+  alternatives:
+    name: invoke
+    link: /usr/bin/invoke
+    path:  /usr/bin/invoke3
+    
+    
+- name: Use Inv3
+  alternatives:
+    name: inv
+    link: /usr/bin/inv
+    path:  /usr/bin/inv3
+
+- name: Python package    
+  pip:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - ansible-vault
+      - Cloudflare
+      - hetzner
+      - hetznercloud
+      - configparser

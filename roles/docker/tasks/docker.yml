@@ -1,0 +1,108 @@
+
+- name: Disable swappiness and pass bridged IPv4 traffic to iptable's chains
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+  with_items:
+    - { name: 'vm.swappiness', value: '0' }
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+    
+- name: LVThin "{{ vg }}/{{ tpool }}/docker"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: docker
+    size: "{{ docker_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS docker
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/docker"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /var/lib/docker
+  mount:
+    name: /var/lib/docker
+    src: "/dev/{{ vg }}/docker"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Docker-CE Repo Centos
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: 0644
+  when: ansible_distribution == 'CentOS' 
+
+- name: Docker-CE Repo Fedora
+  get_url:
+    url: https://download.docker.com/linux/fedora/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: 0644
+  when: ansible_distribution == 'Fedora' 
+ 
+- name: Installing Docker Centos
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - docker-ce
+      - python2-pip
+  when: ansible_distribution == 'CentOS'
+
+- name: Installing Docker-Compose Centos
+  pip:
+    name: docker-compose
+  when: ansible_distribution == 'CentOS'
+
+- name: Installing Docker Fedora
+  dnf:
+    name:
+      - docker-ce 
+      - docker-ce-cli 
+      - docker-compose 
+      - containerd.io
+    releasever: 29
+    state: latest
+  when: ansible_distribution == 'Fedora' 
+    
+- name: Ensure /etc/docker exists
+  file: 
+    path: /etc/docker 
+    state: directory    
+
+- name: daemon.json
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: 0644
+  register: docker
+  
+- name: Restart Docker
+  service:
+    name: docker
+    state: restarted
+  when: docker.changed 
+
+- name: Start Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+    
+- name: adding existing user '{{ admin }}' to group docker
+  user:
+    name: '{{ admin }}'
+    groups: docker
+    append: yes
+
+

@@ -1,0 +1,28 @@
+- name: LVThin "{{ vg }}/{{ tpool }}/data"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: data
+    size: "{{ data_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS data
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/data"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /data
+  mount:
+    name: /data
+    src: "/dev/{{ vg }}/data"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Permission /data 
+  file:
+    path: /data
+    owner: "{{ admin }}"

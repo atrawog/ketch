@@ -1,0 +1,41 @@
+- name: lvm.conf
+  template:
+    src: lvm.conf.j2
+    dest: /etc/lvm/lvm.conf
+    owner: root
+    group: root
+    mode: 0644
+  register: lvm
+  when: ansible_lvm is defined
+
+  
+- name: Restart lvm2-lvmetad
+  service:
+    name: lvm2-lvmetad
+    state: restarted
+  when: lvm.changed 
+  
+- name: Restart lvm2-lvmpolld
+  service:
+    name: lvm2-lvmpolld
+    state: restarted
+  when: lvm.changed 
+      
+
+- name: LV "{{ vg }}"/"{{ tpool }}"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    size: "{{ tpool_size }}"
+    shrink: no
+  register: thinpool
+  when: ansible_lvm is defined and ansible_lvm.vgs[vg] is defined
+
+
+- stat:
+    path: "/dev/mapper/{{ vg }}-{{ tpool }}"
+  register: thinpool
+  
+- debug:
+    msg: "Thinpool present"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk

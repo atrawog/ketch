@@ -102,3 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Ketch Password
+ketch.cfg
+hosts.ini

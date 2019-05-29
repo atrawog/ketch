@@ -1,0 +1,13 @@
+- name: Create installimage.conf
+  template:
+    src: "{{installimage}}"
+    dest: /root/installimage.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Run Installimage 
+  shell:  /root/.oldroot/nfs/install/installimage -a -t yes -c /root/installimage.conf
+  
+- name: Reboot
+  reboot:

@@ -1,0 +1,23 @@
+- name: ifcfg-enp4s0
+  template:
+    src: a_ifcfg-enp4s0.j2
+    dest: /etc/sysconfig/network-scripts/ifcfg-enp4s0
+    owner: root
+    group: root
+    mode: 0644
+  register: network
+    
+#- name: ifcfg-enp4s0:0
+#  template:
+#    src: a_ifcfg-enp4s0:0.j2
+#    dest: /etc/sysconfig/network-scripts/ifcfg-enp4s0:0
+#    owner: root
+#    group: root
+#    mode: 0644
+#  register: network
+    
+- name: Restart network
+  service:
+    name: network
+    state: restarted
+  when: network.changed

@@ -1,0 +1,58 @@
+
+- name: LVThin "{{ vg }}/{{ tpool }}/libvirt"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: libvirt
+    size: "{{ libvirt_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS libvirt
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/libvirt"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /var/lib/libvirt
+  mount:
+    name: /var/lib/libvirt
+    src: "/dev/{{ vg }}/libvirt"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Libvirt
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - virt-manager
+      - qemu-kvm
+      - libvirt-daemon-kvm
+      - libvirt-daemon
+   
+- name: Start Libvirt
+  service:
+    name: libvirtd
+    state: started
+    enabled: yes
+    
+- name: Add qemu group
+  group:
+    name: qemu
+    state: present
+
+- name: adding existing user '{{ admin }}' to group qemu
+  user:
+    name: '{{ admin }}'
+    groups: qemu
+    append: yes
+
+- name: Set libvirt permission
+  file:
+    path: /var/lib/libvirt
+    recurse: yes
+    owner: '{{ admin }}'
+    group: qemu

@@ -1,0 +1,21 @@
+---
+
+- name: Check kube_join
+  stat:
+    path: "/home/{{ admin }}/kube_join.sh"
+  register: kube_join
+
+- name: Init cluster if needed
+  include_tasks: init.yml
+  when: not kube_join.stat.exists
+  run_once: yes
+  
+
+
+- name: Enable and check kubelet service
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    state: started
+    enabled: yes
+  register: started_kubelet

@@ -1,0 +1,49 @@
+
+- name: add Kubernetes' YUM repository
+  yum_repository:
+    name: Kubernetes
+    description: Kubernetes YUM repository
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+    gpgcheck: yes
+
+- name: LVThin "{{ vg }}/{{ tpool }}/kubelet"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: kubelet
+    size: "{{ kubelet_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS docker
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/kubelet"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+
+- name: Mount /var/lib/kubelet
+  mount:
+    name: /var/lib/kubelet
+    src: "/dev/{{ vg }}/kubelet"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+
+- name: kubelet
+  yum:
+    name: "{{ packages }}"
+    disable_gpg_check: yes
+  vars:
+    packages:
+      - kubelet
+      - kubeadm
+      - kubectl
+
+- name: Start kubelet
+  service:
+    name: kubelet
+    state: started
+    enabled: yes

@@ -1,0 +1,9 @@
+rescue_install: true
+boot_size: 512M
+root_size: 4G
+osimage: CentOS-76-64-minimal.tar.gz
+installimage: installimage_sda.conf.j2
+docker_size: 20G
+libvirt_size: 20G
+kubelet_size: 20G
+gluster_size: 20G

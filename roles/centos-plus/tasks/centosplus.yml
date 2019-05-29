@@ -1,0 +1,29 @@
+- name: enable centosplus
+  shell:   yum-config-manager --enable centosplus
+
+- name: kernel-plus
+  yum:
+    name: kernel-plus
+  register: kernelplus
+
+- name: kernel-tools
+  yum:
+    name: kernel-tools
+    state: absent
+
+- name: kernel-tools-libs
+  yum:
+    name: kernel-tools-libs
+    state: absent
+    
+- name: kernel-plus-tools
+  yum:
+    name: kernel-plus-tools
+    
+- name: kernel-plus-tools-libs
+  yum:
+    name: kernel-plus-tools-libs
+
+- name: Reboot
+  reboot:
+  when: kernelplus.changed

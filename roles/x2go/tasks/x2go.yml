@@ -1,0 +1,69 @@
+- name: Rpmfusion 
+  yum:
+    name: "{{ item }}"
+    state: present
+    disable_gpg_check: yes
+  with_items:
+    - https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm 
+    - https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-7.noarch.rpm
+    - http://linuxdownload.adobe.com/adobe-release/adobe-release-x86_64-1.0-1.noarch.rpm
+    - http://linuxdownload.adobe.com/adobe-release/adobe-release-i386-1.0-1.noarch.rpm
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: xfce
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - "@Xfce"
+
+
+- name: x2go
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - x2goserver-xsession
+      - vlc
+      - vim 
+      - dstat 
+      - htop
+      - x264
+      - ristretto
+      - gthumb
+      - ffmpegthumbnailer
+
+- name: Download Firefox
+  get_url:
+    url: https://ftp.mozilla.org/pub/firefox/releases/66.0.5/linux-x86_64/en-US/firefox-66.0.5.tar.bz2
+    dest: /tmp
+
+- name: Extract Firefox
+  unarchive:
+    src: /tmp/firefox-66.0.5.tar.bz2
+    dest: /usr/local/bin/
+    remote_src: yes
+
+- name: Firefox Symlink
+  file:
+    src: /usr/local/bin/firefox/firefox
+    dest: /usr/bin/firefox
+    state: link
+
+- name: Firefox Desktop
+  template: 
+    src: firefox.desktop.j2
+    dest: /usr/share/applications/firefox.desktop
+    owner: root
+    group: root
+    mode: 0644
+    
+- name: Download Chrome
+  get_url:
+    url: https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+    dest: /tmp
+    
+- name: Install Chrome
+  yum:
+     name: /tmp/google-chrome-stable_current_x86_64.rpm
+     state: present
