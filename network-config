@@ -1,0 +1,15 @@
+version: 1
+config:
+  - type: physical
+    name: eth0
+    subnets:
+      - type: static
+        ipv4: true
+        address: 192.168.200.13
+        netmask: 255.255.255.0
+        gateway: 192.168.200.1
+        control: auto
+  - type: nameserver
+    address: 192.168.200.1
+    search:
+      - trawi.org

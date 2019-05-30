@@ -3,8 +3,11 @@ from __future__ import (division,print_function)
 from invoke import task
 import os  
 import random
+import yaml
 import configparser
 import CloudFlare
+from hetzner.robot import Robot
+from hetznercloud import HetznerCloudClientConfiguration, HetznerCloudClient
 
 MASTER_NAME="c7lvmmaster"
 CLONE_NAME="c7vm1"
@@ -16,8 +19,10 @@ CLONE_SIZE="20G"
 ISO="CentOS-7-x86_64-Minimal-1810"
 MAC="52:54:00:%02x:%02x:%02x" % (random.randint(0, 255),random.randint(0, 255),random.randint(0, 255))
 IP="192.168.200.10"
-CFG_KETCH="ketch.cfg"
-CFG_HOSTS="hosts.ini"
+CFG="ketch.cfg"
+HOSTS="hosts.ini"
+HETZNER_SERVER='hetznerserver'
+HETZNER_CLOUD='hetznercloud'
 
 
 def create_disk(c,disk,size):
@@ -27,11 +32,11 @@ def create_disk(c,disk,size):
 
 
 @task(help={'name': "Name of VM"})
-def create_master(c,name=MASTER_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=ISO):
+def master(c,name=MASTER_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=ISO):
     disk="{diskstore}/{name}.qcow2".format(diskstore=diskstore,name=name)
     install_iso="{diskstore}/{name}.iso".format(diskstore=diskstore,name=iso)
     create_disk(c,disk=disk,size=size)
-    install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject ks.cfg --extra-args='ks=file:/templates/ks.cfg console=tty0 console=ttyS0,115200n8' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
+    install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject templates/ks.cfg --extra-args='ks=file:/ks.cfg console=tty0 console=ttyS0,115200n8' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
     c.sudo(install, pty=True,warn=True)
 
 
@@ -140,25 +145,26 @@ def update_cloudflare(username,token,domain,host,ip):
     cf.zones.dns_records.post(zone_id, data={'name':host, 'type':'A',    'content':ip})
 
 
-def update_dns(name,ip,config=CFG_KETCH):
+def update_dns(name,ip,config=CFG):
     cfg = configparser.ConfigParser()
     cfg.read(config)
     update_cloudflare(cfg['cloudflare']['username'],cfg['cloudflare']['token'],cfg['cloudflare']['domain'],name,ip)
  
+
     
-def update_inventory(group,name,ip,config=CFG_HOSTS):
+def update_inventory(group,name,ip,hosts=HOSTS):
     inventory = configparser.ConfigParser(allow_no_value=True,delimiters=(' '))
-    inventory.read(config)
+    inventory.read(hosts)
     if group not in inventory:
         inventory[group]={}
     inventory[group][name]="ansible_host=%s ansible_user=%s"%(ip,'root')
-    with open(config, 'w') as configfile:
+    with open(hosts, 'w') as configfile:
         inventory.write(configfile,space_around_delimiters=False)
 
   
 
 @task()
-def create_clones(c,master=MASTER_NAME,diskstore=DISKSTORE,memory=CLONE_MEMORY,size=CLONE_SIZE):
+def clones(c,master=MASTER_NAME,diskstore=DISKSTORE,memory=CLONE_MEMORY,size=CLONE_SIZE):
     clones=(('vm1','192.168.200.11'),('vm2','192.168.200.12'),('vm3','192.168.200.13'))
     for clone in clones:
         name,ip = clone
@@ -167,8 +173,63 @@ def create_clones(c,master=MASTER_NAME,diskstore=DISKSTORE,memory=CLONE_MEMORY,s
         update_inventory('local',name,ip)
 
 
+@task()
+def update(c):
+    c.run("ansible-playbook site.yml")
+    
 
+@task()    
+def hetzner(c,config=CFG,hosts=HOSTS):
+    print("Fetching Hetzner Server")
+    cfg = configparser.ConfigParser()
+    cfg.read(config)
+    
+    inventory = configparser.ConfigParser(allow_no_value=True,delimiters=(' '))
+    inventory.read(hosts)
+    
+    robot = Robot(cfg['hetzner']['username'], cfg['hetzner']['password'])
+    configuration = HetznerCloudClientConfiguration().with_api_key(cfg['hetzner']['token']).with_api_version(1)
+    client = HetznerCloudClient(configuration)
+    
+    #all_servers = client.servers().get_all() # gets all the servers as a generator
+    all_servers_list = list(client.servers().get_all()) # gets all the servers as a list
+    
+    for server in all_servers_list:
+        inventory[HETZNER_CLOUD][server.name]="ansible_host=%s ansible_user=%s"%(server.public_net_ipv4,cfg['ansible']['username'])
+        update_dns(server.name,server.public_net_ipv4)
+        #update_cloudflare(DOMAIN,server.name,server.public_net_ipv4)
+    
+    print("Fetching Hetzner Cloud")
+    for server in robot.servers:
+        inventory[HETZNER_SERVER][server.name]="ansible_host=%s ansible_user=%s"%(server.ip,cfg['ansible']['username'])
+        update_dns(server.name,server.ip)
+       # update_cloudflare(DOMAIN,server.name,server.ip)
+    
+    with open(hosts, 'w') as configfile:
+        inventory.write(configfile,space_around_delimiters=False)    
+
+
+@task()
+def hosts(c,hosts=HOSTS):
+    inventory = configparser.ConfigParser(allow_no_value=True,delimiters=(' '))
+    inventory.read(hosts)
+
+    if 'local' not in inventory:
+        inventory['local']={}
+    inventory['local']['localhost']="ansible_host=127.0.0.1 ansible_user=root ansible_python_interpreter=/usr/bin/python3"
+
+
+    yaml.warnings({'YAMLLoadWarning': False})
+    site = open("site.yml", "r")
+    items = yaml.load_all(site)
+    for i in items:
+        for j in i:
+            hs=(j['hosts'].split(','))
+            for h in hs:
+                host= (h.strip())
+                if host not in inventory and host !='all':
+                    inventory[host]={}
   
-  
-  
-  
+    with open(hosts, 'w') as configfile:
+        inventory.write(configfile,space_around_delimiters=False)    
+

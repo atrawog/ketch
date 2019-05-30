@@ -1,0 +1,6 @@
+#cloud-config
+ssh_pwauth: False
+disable_root: False
+bootcmd:
+ - lvresize -L 4G /dev/kvg/root
+ - resize2fs /dev/kvg/root 
