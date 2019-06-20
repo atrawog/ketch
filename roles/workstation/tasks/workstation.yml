@@ -36,7 +36,7 @@
      - "rpmfusion-nonfree-release-tainted"
      - vlc
      - avidemux
-     - gnome-tweaks
+#     - gnome-tweaks
      - keepass
      - fedora-workstation-repositories
      - https://www.dropbox.com/download?dl=packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
@@ -86,24 +86,24 @@
     name: "*"
     state: latest
 
-- name: Use Python3
-  alternatives:
-    name: python
-    link: /usr/bin/python
-    path:  /usr/bin/python3.7
+#- name: Use Python3
+#  alternatives:
+#    name: python
+#    link: /usr/bin/python
+#    path:  /usr/bin/python3.7
     
-- name: Use Invoke3
-  alternatives:
-    name: invoke
-    link: /usr/bin/invoke
-    path:  /usr/bin/invoke3
+#- name: Use Invoke3
+#  alternatives:
+#    name: invoke
+#    link: /usr/bin/invoke
+#    path:  /usr/bin/invoke3
     
     
-- name: Use Inv3
-  alternatives:
-    name: inv
-    link: /usr/bin/inv
-    path:  /usr/bin/inv3
+#- name: Use Inv3
+#  alternatives:
+#    name: inv
+#    link: /usr/bin/inv
+#    path:  /usr/bin/inv3
 
 - name: Python package    
   pip:
