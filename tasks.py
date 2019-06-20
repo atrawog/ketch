@@ -10,13 +10,17 @@ from hetzner.robot import Robot
 from hetznercloud import HetznerCloudClientConfiguration, HetznerCloudClient
 
 MASTER_NAME="c7lvmmaster"
+MASTERGCP_NAME="c7gcpmaster"
+MASTERMICRO_NAME="c7micro"
 CLONE_NAME="c7vm1"
 MASTER_MEMORY="2048"
 CLONE_MEMORY="2048"
 DISKSTORE="/var/lib/libvirt/images"
 MASTER_SIZE="2G"
+MASTERMICRO_SIZE="1G"
 CLONE_SIZE="20G"
-ISO="CentOS-7-x86_64-Minimal-1810"
+CENTOS7_MINIMAL="CentOS-7-x86_64-Minimal-1810"
+CENTOS7_NETWORK="CentOS-7-x86_64-NetInstall-1810"
 MAC="52:54:00:%02x:%02x:%02x" % (random.randint(0, 255),random.randint(0, 255),random.randint(0, 255))
 IP="192.168.200.10"
 CFG="ketch.cfg"
@@ -25,19 +29,54 @@ HETZNER_SERVER='hetznerserver'
 HETZNER_CLOUD='hetznercloud'
 
 
-def create_disk(c,disk,size):
+def create_disk(c,disk,size,fmt='qcow2' ):
     if not os.path.exists(disk): 
-        cmd="qemu-img create -f qcow2 -o size={size} {disk}".format(size=size,disk=disk)
+        cmd="qemu-img create -f {fmt} -o size={size} {disk}".format(size=size,disk=disk,fmt=fmt)
         c.sudo(cmd, pty=True)
 
 
 @task(help={'name': "Name of VM"})
-def master(c,name=MASTER_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=ISO):
+def mastercloud(c,name=MASTER_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=CENTOS7_MINIMAL):
     disk="{diskstore}/{name}.qcow2".format(diskstore=diskstore,name=name)
     install_iso="{diskstore}/{name}.iso".format(diskstore=diskstore,name=iso)
     create_disk(c,disk=disk,size=size)
     install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject templates/ks.cfg --extra-args='ks=file:/ks.cfg console=tty0 console=ttyS0,115200n8' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
     c.sudo(install, pty=True,warn=True)
+
+
+@task(help={'name': "Name of VM"})
+def mastergcp (c,name=MASTERGCP_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=CENTOS7_MINIMAL,fmt='qcow2'):
+    disk="{diskstore}/{name}.{fmt}".format(diskstore=diskstore,name=name,fmt=fmt)
+    install_iso="{diskstore}/{name}.iso".format(diskstore=diskstore,name=iso)
+    create_disk(c,disk=disk,size=size,fmt=fmt)
+    install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject templates/ksgc7.cfg --extra-args='ks=file:/ksgc7.cfg console=tty0 console=ttyS0,38400n8d ' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
+    c.sudo(install, pty=True,warn=True)
+
+@task()
+def mastermicro (c,name=MASTERMICRO_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=CENTOS7_MINIMAL,fmt='qcow2'):
+    disk="{diskstore}/{name}.{fmt}".format(diskstore=diskstore,name=name,fmt=fmt)
+    install_iso="{diskstore}/{name}.iso".format(diskstore=diskstore,name=iso)
+    create_disk(c,disk=disk,size=size,fmt=fmt)
+    install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject templates/ks7micro.cfg --extra-args='ks=file:/ks7micro.cfg console=tty0 console=ttyS0,38400n8d ' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
+    c.sudo(install, pty=True,warn=True)
+
+    
+@task()
+def gcpupload (c,name=MASTERGCP_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=CENTOS7_MINIMAL,fmt='qcow2'):
+    with c.cd(diskstore):
+        disk="{name}.{fmt}".format(name=name,fmt=fmt)
+        tar="{name}.{fmt}".format(name=name,fmt='tar.gz')
+        if not os.path.exists(tar):
+            c.run("qemu-img convert -f raw -O {fmt} {disk} disk.raw".format(tar=tar,disk=disk,fmt=fmt),pty=True,warn=True)
+            c.run("tar --format=oldgnu -Sczf {tar} disk.raw".format(tar=tar),pty=True,warn=True)
+            c.run("gsutil cp {tar} gs://{name}".format(tar=tar,name=name),pty=True,warn=True)
+            c.run("gcloud compute images create {name} --source-uri gs://{name}/{name}.tar.gz".format(name=name),pty=True,warn=True)
+        c.run("gcloud compute images list --no-standard-images",pty=True,warn=True)
+
+@task()
+def bucketcreate(c,name=MASTERGCP_NAME):
+    c.run("gsutil mb gs://%s"%name)
+    
 
 
 def create_iso(c,name=CLONE_NAME,diskstore=DISKSTORE,ip=IP):

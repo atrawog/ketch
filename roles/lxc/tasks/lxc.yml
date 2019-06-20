@@ -1,0 +1,37 @@
+- name: LXC
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - lxc
+      - lxcfs
+      - lxc-templates
+      - libvirt-daemon-lxc
+      - libvirt-daemon-driver-lxc
+      - lxc-extra
+      - debootstrap
+      - libvirt
+      - perl
+      - gpg
+      - virt-bootstrap
+      
+- name: LXC Config
+  template: 
+    src: default.conf.j2
+    dest: /etc/lxc/default.conf
+    owner: root
+    group: root
+    mode: 0644
+      
+- name: Start libvirtd
+  service:
+    name: libvirtd
+    state: started
+    enabled: yes
+    
+      
+- name: Start lxc
+  service:
+    name: lxc
+    state: started
+    enabled: yes

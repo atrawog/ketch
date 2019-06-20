@@ -19,6 +19,13 @@
     - { role: common}
     - { role: storage}
 
+- hosts: lxc
+  gather_facts: yes
+  become: yes
+  roles:
+    - { role: lxc, tags: lxc}
+
+
 - hosts: docker
   gather_facts: yes
   become: yes
