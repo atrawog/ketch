@@ -12,12 +12,17 @@
     - { role: hetzner}
     - { role: centos-plus}
     
-- hosts: hetznerserver, hetznercloud, local
+- hosts: hetznerserver, hetznercloud, localhost
   gather_facts: yes
   become: yes
   roles:
     - { role: common}
-    - { role: storage}
+
+- hosts: hetznerserver, localhost
+  gather_facts: yes
+  become: yes
+  roles:
+    - { role: thinpool}
 
 - hosts: lxc
   gather_facts: yes
@@ -72,8 +77,8 @@
   gather_facts: yes
   become: yes
   roles:
-    - { role: common}
-    - { role: storage}
-    - { role: docker, tags: docker} 
-    - { role: libvirt, tags: libvirt}
+#    - { role: common}
+#    - { role: thinpool}
+#    - { role: docker, tags: docker} 
+#    - { role: libvirt, tags: libvirt}
     - { role: workstation, tags: workstation }

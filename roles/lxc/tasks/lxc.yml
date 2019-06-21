@@ -1,37 +1,148 @@
-- name: LXC
+- name: Snap
   yum:
     name: "{{ packages }}"
   vars:
     packages:
-      - lxc
-      - lxcfs
-      - lxc-templates
-      - libvirt-daemon-lxc
-      - libvirt-daemon-driver-lxc
-      - lxc-extra
-      - debootstrap
-      - libvirt
-      - perl
-      - gpg
-      - virt-bootstrap
-      
-- name: LXC Config
-  template: 
-    src: default.conf.j2
-    dest: /etc/lxc/default.conf
+      - snapd
+
+- name: Snaplink
+  file:
+    src: /var/lib/snapd/snap
+    dest: /snap
+    state: link
+
+- name: LXC
+  snap:
+    name:
+      - lxd
+#
+
+
+# - name: Enable Fedora Copr for LXC
+#   command: dnf copr enable -y ganto/lxc3
+#
+#
+# - name: LXC
+#   yum:
+#     name: "{{ packages }}"
+#   vars:
+#     packages:
+#       - lxc
+#       - lxcfs
+#       - lxc-templates
+#       - libvirt-daemon-lxc
+#       - libvirt-daemon-driver-lxc
+#       - lxc-extra
+#       - debootstrap
+#       - libvirt
+#       - perl
+#       - gpg
+#       - virt-bootstrap
+#       - lxd
+#       - lxd-client
+#       - lxd-tools
+#       - skopeo
+# #      - umoci
+#       - jq
+
+# - name: LXC Config
+#   template:
+#     src: default.conf.j2
+#     dest: /etc/lxc/default.conf
+#     owner: root
+#     group: root
+#     mode: 0644
+#
+# - name: LXC User Default
+#   template:
+#     src: default_user.conf.j2
+#     dest: /home/{{ admin }}/.config/lxc/default.conf
+#     owner: "{{ admin }}"
+#     mode: 0644
+#
+# - name: LXC User Config
+#   template:
+#     src: config.yml.j2
+#     dest: /home/{{ admin }}/.config/lxc/config.yml
+#     owner: "{{ admin }}"
+#     mode: 0644
+
+- name: Subid Config
+  template:
+    src: subid.j2
+    dest: /etc/subid
     owner: root
     group: root
     mode: 0644
-      
-- name: Start libvirtd
-  service:
-    name: libvirtd
-    state: started
-    enabled: yes
-    
-      
-- name: Start lxc
-  service:
-    name: lxc
-    state: started
-    enabled: yes
+
+- name: Subgid Config
+  template:
+    src: subid.j2
+    dest: /etc/subgid
+    owner: root
+    group: root
+    mode: 0644
+
+# - name: Set Sticky
+#   shell: chmod 4755 /usr/bin/newuidmap /usr/bin/newgidmap /usr/bin/lxc-usernsexec
+
+# - name: Start lxc
+#   service:
+#     name: lxc
+#     state: restarted
+#     enabled: yes
+#
+# - name: Start lxd
+#   service:
+#     name: lxd
+#     state: restarted
+#     enabled: yes
+
+- name: adding {{ admin }}' to group lxd
+  user:
+    name: '{{ admin }}'
+    groups: lxd
+    append: yes
+
+
+# - name: LXD Init
+#   shell: >-
+#     cat <<EOF | lxd init --preseed
+#     config:
+#       images.auto_update_interval: "0"
+#     networks:
+#     - config:
+#         ipv4.address: auto
+#         ipv6.address: auto
+#       description: ""
+#       managed: false
+#       name: lxdbr0
+#       type: ""
+#     storage_pools:
+#     - config: {}
+#       description: ""
+#       name: default
+#       driver: dir
+#     profiles:
+#     - config: {}
+#       description: ""
+#       devices:
+#         eth0:
+#           name: eth0
+#           nictype: bridged
+#           parent: lxdbr0
+#           type: nic
+#         root:
+#           path: /
+#           pool: default
+#           type: disk
+#       name: default
+#     cluster: null
+#     EOF
+#
+# # lxc launch images:fedora/30 fed30
+#
+# - name: Launch Alpine Image
+#   shell: lxc launch images:alpine/3.9  alpine -v --debug
+#   become: yes
+#   become_user: "{{ admin }}"
