@@ -1,5 +1,5 @@
 
-    
+
 - name: Make sure we have a 'wheel' group
   group:
     name: wheel
@@ -12,7 +12,8 @@
     regexp: '^%wheel'
     line: '%wheel ALL=(ALL) NOPASSWD: ALL'
     validate: visudo -cf %s
-    
+  ignore_errors: yes
+
 - name: Add user "{{ admin }}"
   user:
     name: "{{ admin }}"
@@ -22,7 +23,7 @@
     groups: wheel
     append: yes
     create_home: yes
-    
+
 - name: Add "{{ admin }}" ssh key
   authorized_key:
     user: "{{ admin }}"

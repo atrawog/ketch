@@ -6,5 +6,6 @@ docker_size: 100G
 libvirt_size: 100G
 kubelet_size: 100G
 gluster_size: 100G
+lxd_size: 100G
 home_size: 100G
 admin: atrawog

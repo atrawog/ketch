@@ -1,0 +1,4 @@
+- name:
+  docker_compose:
+    definition: /code/geonode/docker-compose.yml
+    build: yes

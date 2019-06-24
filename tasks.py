@@ -1,13 +1,15 @@
 from __future__ import (division,print_function)
 
 from invoke import task
-import os  
+import os
 import random
 import yaml
+import json
 import configparser
 import CloudFlare
 from hetzner.robot import Robot
 from hetznercloud import HetznerCloudClientConfiguration, HetznerCloudClient
+from pylxd import Client
 
 MASTER_NAME="c7lvmmaster"
 MASTERGCP_NAME="c7gcpmaster"
@@ -30,7 +32,7 @@ HETZNER_CLOUD='hetznercloud'
 
 
 def create_disk(c,disk,size,fmt='qcow2' ):
-    if not os.path.exists(disk): 
+    if not os.path.exists(disk):
         cmd="qemu-img create -f {fmt} -o size={size} {disk}".format(size=size,disk=disk,fmt=fmt)
         c.sudo(cmd, pty=True)
 
@@ -60,7 +62,7 @@ def mastermicro (c,name=MASTERMICRO_NAME,memory=MASTER_MEMORY,diskstore=DISKSTOR
     install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --location {location} --os-type linux --os-variant centos7.0  --virt-type kvm --network network=default --initrd-inject templates/ks7micro.cfg --extra-args='ks=file:/ks7micro.cfg console=tty0 console=ttyS0,38400n8d ' --console pty,target_type=serial --accelerate --nographics --noreboot".format(name=name,memory=memory,disk=disk,location=install_iso)
     c.sudo(install, pty=True,warn=True)
 
-    
+
 @task()
 def gcpupload (c,name=MASTERGCP_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,size=MASTER_SIZE,iso=CENTOS7_MINIMAL,fmt='qcow2'):
     with c.cd(diskstore):
@@ -76,11 +78,11 @@ def gcpupload (c,name=MASTERGCP_NAME,memory=MASTER_MEMORY,diskstore=DISKSTORE,si
 @task()
 def bucketcreate(c,name=MASTERGCP_NAME):
     c.run("gsutil mb gs://%s"%name)
-    
+
 
 
 def create_iso(c,name=CLONE_NAME,diskstore=DISKSTORE,ip=IP):
-    
+
     md="""instance-id: id-00001
 local-hostname: {name}
 """.format(name=name)
@@ -90,7 +92,7 @@ ssh_pwauth: False
 disable_root: False
 bootcmd:
  - lvresize -L 4G /dev/kvg/root
- - resize2fs /dev/kvg/root 
+ - resize2fs /dev/kvg/root
 """
     nc="""version: 1
 config:
@@ -130,14 +132,14 @@ config:
     meta_data=open("meta-data","w")
     user_data=open("user-data","w")
     network_config=open("network-config","w")
-    
+
     meta_data.write(md)
     user_data.write(ud)
     network_config.write(nc)
     meta_data.close()
     user_data.close()
     network_config.close()
-    
+
     clone_iso="{diskstore}/{name}.iso".format(diskstore=diskstore,name=name)
     rm="rm -f {clone_iso}".format(clone_iso=clone_iso)
     geniso="genisoimage -output {clone_iso} -input-charset utf-8 -volid cidata -joliet -r meta-data user-data network-config".format(clone_iso=clone_iso)
@@ -152,14 +154,14 @@ def clone_master(c,master=MASTER_NAME,clone=CLONE_NAME,diskstore=DISKSTORE,memor
     disk_master="{diskstore}/{name}.qcow2".format(diskstore=diskstore,name=master)
     if not os.path.exists(disk_master):
         print("Run create-master first")
-        exit(1) 
+        exit(1)
     disk_clone="{diskstore}/{name}.qcow2".format(diskstore=diskstore,name=clone)
     clone_iso=create_iso(c,diskstore=diskstore,name=clone,ip=ip)
     create="qemu-img create -f qcow2 -o preallocation=metadata {disk_clone} {size}".format(disk_clone=disk_clone,size=size)
     resize="virt-resize --expand /dev/sda2 {disk_master} {disk_clone}".format(disk_master=disk_master,disk_clone=disk_clone)
     install="virt-install --name {name} --memory {memory} --disk {disk},device=disk,bus=virtio --disk {clone_iso},device=cdrom --os-type linux --os-variant centos7.0  --virt-type kvm --network network=vnet --console pty,target_type=serial --accelerate --nographics --noreboot --import".format(name=clone,memory=memory,disk=disk_clone,clone_iso=clone_iso)
     start="virsh --connect qemu:///system start {clone}".format(clone=clone)
-    if not os.path.exists(disk_clone): 
+    if not os.path.exists(disk_clone):
         c.sudo(create, pty=True,warn=True)
         c.sudo(resize, pty=True,warn=True)
         c.sudo(install, pty=True)
@@ -170,17 +172,17 @@ def update_cloudflare(username,token,domain,host,ip):
     print("Updating",host,domain,ip)
     cf = CloudFlare.CloudFlare(email=username, token=token)
     zones = {
-        zone['name']: zone 
+        zone['name']: zone
         for zone in cf.zones.get()
     }
-    
+
     zone_id = zones[domain]['id']
-   
+
     dns_records = cf.zones.dns_records.get(zone_id, params={'name':host+ '.' + domain})
     for dns_record in dns_records:
         dns_record_id = dns_record['id']
         cf.zones.dns_records.delete(zone_id, dns_record_id)
-  
+
     cf.zones.dns_records.post(zone_id, data={'name':host, 'type':'A',    'content':ip})
 
 
@@ -188,9 +190,9 @@ def update_dns(name,ip,config=CFG):
     cfg = configparser.ConfigParser()
     cfg.read(config)
     update_cloudflare(cfg['cloudflare']['username'],cfg['cloudflare']['token'],cfg['cloudflare']['domain'],name,ip)
- 
 
-    
+
+
 def update_inventory(group,name,ip,hosts=HOSTS):
     inventory = configparser.ConfigParser(allow_no_value=True,delimiters=(' '))
     inventory.read(hosts)
@@ -200,7 +202,7 @@ def update_inventory(group,name,ip,hosts=HOSTS):
     with open(hosts, 'w') as configfile:
         inventory.write(configfile,space_around_delimiters=False)
 
-  
+
 
 @task()
 def clones(c,master=MASTER_NAME,diskstore=DISKSTORE,memory=CLONE_MEMORY,size=CLONE_SIZE):
@@ -215,37 +217,37 @@ def clones(c,master=MASTER_NAME,diskstore=DISKSTORE,memory=CLONE_MEMORY,size=CLO
 @task()
 def update(c):
     c.run("ansible-playbook site.yml")
-    
 
-@task()    
+
+@task()
 def hetzner(c,config=CFG,hosts=HOSTS):
     print("Fetching Hetzner Server")
     cfg = configparser.ConfigParser()
     cfg.read(config)
-    
+
     inventory = configparser.ConfigParser(allow_no_value=True,delimiters=(' '))
     inventory.read(hosts)
-    
+
     robot = Robot(cfg['hetzner']['username'], cfg['hetzner']['password'])
     configuration = HetznerCloudClientConfiguration().with_api_key(cfg['hetzner']['token']).with_api_version(1)
     client = HetznerCloudClient(configuration)
-    
+
     #all_servers = client.servers().get_all() # gets all the servers as a generator
     all_servers_list = list(client.servers().get_all()) # gets all the servers as a list
-    
+
     for server in all_servers_list:
         inventory[HETZNER_CLOUD][server.name]="ansible_host=%s ansible_user=%s"%(server.public_net_ipv4,cfg['ansible']['username'])
         update_dns(server.name,server.public_net_ipv4)
         #update_cloudflare(DOMAIN,server.name,server.public_net_ipv4)
-    
+
     print("Fetching Hetzner Cloud")
     for server in robot.servers:
         inventory[HETZNER_SERVER][server.name]="ansible_host=%s ansible_user=%s"%(server.ip,cfg['ansible']['username'])
         update_dns(server.name,server.ip)
        # update_cloudflare(DOMAIN,server.name,server.ip)
-    
+
     with open(hosts, 'w') as configfile:
-        inventory.write(configfile,space_around_delimiters=False)    
+        inventory.write(configfile,space_around_delimiters=False)
 
 
 @task()
@@ -268,7 +270,40 @@ def hosts(c,hosts=HOSTS):
                 host= (h.strip())
                 if host not in inventory and host !='all':
                     inventory[host]={}
-  
-    with open(hosts, 'w') as configfile:
-        inventory.write(configfile,space_around_delimiters=False)    
 
+    with open(hosts, 'w') as configfile:
+        inventory.write(configfile,space_around_delimiters=False)
+
+@task()
+def lxc_centos(c,host='centos7'):
+    launch="lxc launch images:centos/7 {host} -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay".format(host=host)
+    c.run(launch, pty=True,warn=True)
+    c.run("lxc exec {host} -- yum install -y openssh-server".format(host=host), pty=True,warn=True)
+    c.run("lxc exec {host} -- systemctl enable --now sshd".format(host=host), pty=True,warn=True)
+    c.run("lxc exec {host} -- mkdir /root/.ssh/".format(host=host), pty=True,warn=True)
+    c.run("lxc exec {host} -- curl -L https://github.com/atrawog.keys -o /root/.ssh/authorized_keys".format(host=host), pty=True,warn=True)
+    c.run("lxc config device add {host} sdata disk source=/data path=data".format(host=host), pty=True,warn=True)
+    lxc_inventory(c)
+
+@task()
+def lxc_geotest(c,host='geotest'):
+    lxc_centos(c,host=host)
+    lxc_inventory(c)
+
+
+
+@task()
+def lxc_inventory(c):
+    list="lxc list --format json"
+    r=c.run(list,hide='out')
+    if r.ok :
+        #print(r.stdout)
+        inventory = json.loads(r.stdout)
+        for host in inventory:
+            name = host['name']
+            if 'eth0' in host['state']['network']:
+                ip = host['state']['network']['eth0']['addresses'][0]['address']
+                update_inventory('lxvm',name,ip)
+                update_dns(name,ip)
+            #print(host.keys())
+            #print(host['network'])

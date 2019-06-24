@@ -1,71 +1,104 @@
-- name: Snap
-  yum:
-    name: "{{ packages }}"
-  vars:
-    packages:
-      - snapd
-
-- name: Snaplink
-  file:
-    src: /var/lib/snapd/snap
-    dest: /snap
-    state: link
-
-- name: LXC
-  snap:
-    name:
-      - lxd
+# - name: Snap
+#   yum:
+#     name: "{{ packages }}"
+#   vars:
+#     packages:
+#       - snapd
+#
+# - name: Snaplink
+#   file:
+#     src: /var/lib/snapd/snap
+#     dest: /snap
+#     state: link
+#
+# - name: LXC
+#   snap:
+#     name:
+#       - lxd
 #
 
 
 # - name: Enable Fedora Copr for LXC
 #   command: dnf copr enable -y ganto/lxc3
 #
-#
-# - name: LXC
-#   yum:
-#     name: "{{ packages }}"
-#   vars:
-#     packages:
-#       - lxc
-#       - lxcfs
-#       - lxc-templates
-#       - libvirt-daemon-lxc
-#       - libvirt-daemon-driver-lxc
-#       - lxc-extra
-#       - debootstrap
-#       - libvirt
-#       - perl
-#       - gpg
-#       - virt-bootstrap
-#       - lxd
-#       - lxd-client
-#       - lxd-tools
-#       - skopeo
-# #      - umoci
-#       - jq
 
-# - name: LXC Config
-#   template:
-#     src: default.conf.j2
-#     dest: /etc/lxc/default.conf
-#     owner: root
-#     group: root
-#     mode: 0644
-#
-# - name: LXC User Default
-#   template:
-#     src: default_user.conf.j2
-#     dest: /home/{{ admin }}/.config/lxc/default.conf
-#     owner: "{{ admin }}"
-#     mode: 0644
-#
-# - name: LXC User Config
-#   template:
-#     src: config.yml.j2
-#     dest: /home/{{ admin }}/.config/lxc/config.yml
-#     owner: "{{ admin }}"
-#     mode: 0644
+- name: LVThin "{{ vg }}/{{ tpool }}/lxd"
+  lvol:
+    vg: "{{ vg }}"
+    thinpool: "{{ tpool }}"
+    lv: lxd
+    size: "{{ lxd_size }}"
+    shrink: no
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: FS lxc
+  filesystem:
+    fstype: ext4
+    resizefs: yes
+    dev: "/dev/{{ vg }}/lxd"
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: Mount /var/lib/lxd
+  mount:
+    name: /var/lib/lxd
+    src: "/dev/{{ vg }}/lxd"
+    fstype: ext4
+    state: mounted
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
+
+- name: LXC
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+      - libcgroup
+      - libcgroup-tools
+      - lxc
+      - lxcfs
+      - lxc-templates
+      - libvirt-daemon-lxc
+      - libvirt-daemon-driver-lxc
+      - lxc-extra
+      - debootstrap
+      - libvirt
+      - perl
+      - gpg
+      - virt-bootstrap
+      - lxd
+      - lxd-client
+      - lxd-tools
+      - skopeo
+#      - umoci
+      - jq
+      - lxcfs
+      - python3-lxc
+
+
+#- name: pylxd
+#  pip:
+#    name: pylxd
+
+- name: LXC Config
+  template:
+    src: default.conf.j2
+    dest: /etc/lxc/default.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: LXC User Default
+  template:
+    src: default_user.conf.j2
+    dest: /home/{{ admin }}/.config/lxc/default.conf
+    owner: "{{ admin }}"
+    mode: 0644
+
+- name: LXC User Config
+  template:
+    src: config.yml.j2
+    dest: /home/{{ admin }}/.config/lxc/config.yml
+    owner: "{{ admin }}"
+    mode: 0644
 
 - name: Subid Config
   template:
@@ -83,20 +116,20 @@
     group: root
     mode: 0644
 
-# - name: Set Sticky
-#   shell: chmod 4755 /usr/bin/newuidmap /usr/bin/newgidmap /usr/bin/lxc-usernsexec
+- name: Set Sticky
+  shell: chmod 4755 /usr/bin/newuidmap /usr/bin/newgidmap /usr/bin/lxc-usernsexec
 
-# - name: Start lxc
-#   service:
-#     name: lxc
-#     state: restarted
-#     enabled: yes
-#
-# - name: Start lxd
-#   service:
-#     name: lxd
-#     state: restarted
-#     enabled: yes
+- name: Start lxc
+  service:
+    name: lxc
+    state: restarted
+    enabled: yes
+
+- name: Start lxd
+  service:
+    name: lxd
+    state: restarted
+    enabled: yes
 
 - name: adding {{ admin }}' to group lxd
   user:
@@ -105,40 +138,54 @@
     append: yes
 
 
-# - name: LXD Init
-#   shell: >-
-#     cat <<EOF | lxd init --preseed
-#     config:
-#       images.auto_update_interval: "0"
-#     networks:
-#     - config:
-#         ipv4.address: auto
-#         ipv6.address: auto
-#       description: ""
-#       managed: false
-#       name: lxdbr0
-#       type: ""
-#     storage_pools:
-#     - config: {}
-#       description: ""
-#       name: default
-#       driver: dir
-#     profiles:
-#     - config: {}
-#       description: ""
-#       devices:
-#         eth0:
-#           name: eth0
-#           nictype: bridged
-#           parent: lxdbr0
-#           type: nic
-#         root:
-#           path: /
-#           pool: default
-#           type: disk
-#       name: default
-#     cluster: null
-#     EOF
+- name: LXD Init
+  shell: >-
+    cat <<EOF | lxd init --preseed
+    config:
+      images.auto_update_interval: "0"
+    networks:
+    - config:
+        ipv4.address: auto
+        ipv6.address: auto
+      description: ""
+      managed: false
+      name: lxdbr0
+      type: ""
+    storage_pools:
+    - config: {}
+      description: ""
+      name: default
+      driver: dir
+    profiles:
+    - config: {}
+      description: ""
+      devices:
+        eth0:
+          name: eth0
+          nictype: bridged
+          parent: lxdbr0
+          type: nic
+        root:
+          path: /
+          pool: default
+          type: disk
+      name: default
+    cluster: null
+    EOF
+
+- name: LXD Storage
+  shell: lxc storage create default dir source=/var/lib/lxd/storage-pools/default
+  ignore_errors: yes
+
+- name: LXD Root Disk
+  shell: lxc profile device add default root disk path=/ pool=default
+  ignore_errors: yes
+
+- name: LXD Network
+  shell: lxc network attach-profile lxdbr0 default eth0
+  ignore_errors: yes
+
+
 #
 # # lxc launch images:fedora/30 fed30
 #
@@ -146,3 +193,9 @@
 #   shell: lxc launch images:alpine/3.9  alpine -v --debug
 #   become: yes
 #   become_user: "{{ admin }}"
+
+# lxc launch images:alpine/3.9  alpine -v --debug -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay
+# lxc exec alpine ash
+
+# lxc launch ubuntu ubuntu -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay
+#  lxc launch ubuntu ubuntu -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay

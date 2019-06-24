@@ -12,7 +12,7 @@
     fstype: ext4
     resizefs: yes
     dev: "/dev/{{ vg }}/data"
-  when: thinpool.stat.islnk is defined and thinpool.stat.islnk 
+  when: thinpool.stat.islnk is defined and thinpool.stat.islnk
 
 - name: Mount /data
   mount:
@@ -22,7 +22,19 @@
     state: mounted
   when: thinpool.stat.islnk is defined and thinpool.stat.islnk
 
-- name: Permission /data 
+- name: Create /data
+  file:
+    path: /data
+    state: directory
+    mode: '0755'
+
+- name: Create /code
+  file:
+    src: /data/code
+    dest: /code
+    state: link
+
+- name: Permission /data
   file:
     path: /data
     owner: "{{ admin }}"

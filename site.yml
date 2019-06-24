@@ -2,8 +2,8 @@
   gather_facts: yes
   become: yes
   roles:
-    - { role: debug, tags: debug}
-
+#    - { role: debug, tags: debug}
+    - { role: common}
 
 - hosts: hetznerserver, hetznercloud
   gather_facts: yes
@@ -11,12 +11,6 @@
   roles:
     - { role: hetzner}
     - { role: centos-plus}
-    
-- hosts: hetznerserver, hetznercloud, localhost
-  gather_facts: yes
-  become: yes
-  roles:
-    - { role: common}
 
 - hosts: hetznerserver, localhost
   gather_facts: yes
@@ -48,13 +42,13 @@
   become: yes
   roles:
     - { role: x2go, tags: x2go}
-        
+
 - hosts: libvirt
   gather_facts: yes
   become: yes
   roles:
     - { role: libvirt, tags: libvirt}
-        
+
 - hosts: vm
   gather_facts: yes
   become: yes
@@ -66,19 +60,19 @@
   become: yes
   roles:
     - { role: kubernetes/master, tags: master }
-    
+
 - hosts: node
   gather_facts: yes
   become: yes
   roles:
     - { role: kubernetes/node, tags: node }
-    
+
 - hosts: workstation
   gather_facts: yes
   become: yes
   roles:
 #    - { role: common}
 #    - { role: thinpool}
-#    - { role: docker, tags: docker} 
+#    - { role: docker, tags: docker}
 #    - { role: libvirt, tags: libvirt}
     - { role: workstation, tags: workstation }
