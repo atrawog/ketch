@@ -78,6 +78,11 @@
 #  pip:
 #    name: pylxd
 
+- name: LXC Config Dir
+  file:
+    path: /etc/lxc
+    state: directory
+
 - name: LXC Config
   template:
     src: default.conf.j2
@@ -149,7 +154,7 @@
         ipv6.address: auto
       description: ""
       managed: false
-      name: lxdbr0
+      name: virbr0
       type: ""
     storage_pools:
     - config: {}
@@ -163,7 +168,7 @@
         eth0:
           name: eth0
           nictype: bridged
-          parent: lxdbr0
+          parent: virbr0
           type: nic
         root:
           path: /
@@ -182,7 +187,7 @@
   ignore_errors: yes
 
 - name: LXD Network
-  shell: lxc network attach-profile lxdbr0 default eth0
+  shell: lxc network attach-profile virbr0 default eth0
   ignore_errors: yes
 
 

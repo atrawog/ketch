@@ -290,7 +290,15 @@ def lxc_geotest(c,host='geotest'):
     lxc_centos(c,host=host)
     lxc_inventory(c)
 
+@task()
+def lxc_geoman(c,host='geoman'):
+    lxc_centos(c,host=host)
+    lxc_inventory(c)
 
+@task()
+def lxc_geowoldan(c,host='geowoldan'):
+    lxc_centos(c,host=host)
+    lxc_inventory(c)
 
 @task()
 def lxc_inventory(c):
