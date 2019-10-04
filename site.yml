@@ -25,6 +25,12 @@
     - { role: lxc, tags: lxc}
 
 
+- hosts: gan
+  gather_facts: yes
+  become: yes
+  roles:
+    - { role: gan, tags: gan}
+    
 - hosts: docker
   gather_facts: yes
   become: yes

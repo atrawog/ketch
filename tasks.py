@@ -275,6 +275,17 @@ def hosts(c,hosts=HOSTS):
         inventory.write(configfile,space_around_delimiters=False)
 
 @task()
+def lxc_ubuntu(c,host='ubuntu18'):
+    launch="lxc launch ubuntu-daily:18.04 {host} -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay".format(host=host)
+    c.run(launch, pty=True,warn=True)
+    c.run("lxc exec {host} -- apt-get install -y openssh-server".format(host=host, pty=True,warn=True))
+    c.run("lxc exec {host} -- systemctl enable --now sshd".format(host=host), pty=True,warn=True)
+    c.run("lxc exec {host} -- mkdir /root/.ssh/".format(host=host), pty=True,warn=True)
+    c.run("lxc exec {host} -- curl -L https://github.com/atrawog.keys -o /root/.ssh/authorized_keys".format(host=host), pty=True,warn=True)
+    c.run("lxc config device add {host} sdata disk source=/data path=data".format(host=host), pty=True,warn=True)
+    lxc_inventory(c)
+
+@task()
 def lxc_centos(c,host='centos7'):
     launch="lxc launch images:centos/7 {host} -c security.privileged=true -c security.nesting=true -c linux.kernel_modules=ip_tables,ip6_tables,netlink_diag,nf_nat,overlay".format(host=host)
     c.run(launch, pty=True,warn=True)

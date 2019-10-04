@@ -1,0 +1,6 @@
+- name: Tools
+  yum:
+    name: "{{ packages }}"
+  vars:
+    packages:
+     - nodejs-yarn

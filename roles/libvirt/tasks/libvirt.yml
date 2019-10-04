@@ -50,6 +50,18 @@
     groups: qemu
     append: yes
 
+- name: Add libvirt group
+  group:
+    name: libvirt
+    state: present
+
+- name: adding existing user '{{ admin }}' to group qemu
+  user:
+    name: '{{ admin }}'
+    groups: libvirt
+    append: yes
+
+
 - name: Set libvirt permission
   file:
     path: /var/lib/libvirt
