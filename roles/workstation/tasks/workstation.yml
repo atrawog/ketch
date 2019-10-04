@@ -1,20 +1,21 @@
-- name: Rpmfusion 
+- name: Rpmfusion
   yum:
     name: "{{ item }}"
     state: present
     disable_gpg_check: yes
   with_items:
-    - https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-30.noarch.rpm 
+    - https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-30.noarch.rpm
     - https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-30.noarch.rpm
     - http://linuxdownload.adobe.com/adobe-release/adobe-release-x86_64-1.0-1.noarch.rpm
     - http://linuxdownload.adobe.com/adobe-release/adobe-release-i386-1.0-1.noarch.rpm
-    
+
 - name: Add repository google-cloud-sdk
   yum_repository:
     name: google-cloud-sdk
     description: Google Cloud SDK
     baseurl: https://packages.cloud.google.com/yum/repos/cloud-sdk-el7-x86_64
     gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg
+    gpgcheck: no
 
 - name: QGIS Copr
   shell: dnf copr enable -y dani/qgis
@@ -52,7 +53,7 @@
      - dans-gdal-scripts
      - kdiff3
      - python3-notebook
-     - mathjax 
+     - mathjax
      - sscg
      - python2-demjson
      - encfs
@@ -66,21 +67,25 @@
      - google-cloud-sdk-datalab
      - google-cloud-sdk-app-engine-python
      - kubectl
-     - gcc 
-     - python-devel 
-     - python-setuptools 
+     - gcc
+     - python-devel
+     - python-setuptools
      - redhat-rpm-config
      - fslint
      - gitk
-     
-     
-     
+     - libreoffice
+     - libreoffice-langpack-de
+     - gtkterm
+     - meld
+
+
+
 - name: Installing Chrome
   dnf:
     name:
       - google-chrome-stable
     enablerepo: google-chrome
-    
+
 - name: upgrade all packages
   dnf:
     name: "*"
@@ -91,21 +96,21 @@
 #    name: python
 #    link: /usr/bin/python
 #    path:  /usr/bin/python3.7
-    
+
 #- name: Use Invoke3
 #  alternatives:
 #    name: invoke
 #    link: /usr/bin/invoke
 #    path:  /usr/bin/invoke3
-    
-    
+
+
 #- name: Use Inv3
 #  alternatives:
 #    name: inv
 #    link: /usr/bin/inv
 #    path:  /usr/bin/inv3
 
-- name: Python package    
+- name: Python package
   pip:
     name: "{{ packages }}"
   vars:

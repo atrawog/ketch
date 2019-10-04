@@ -28,6 +28,12 @@
     state: directory
     mode: '0755'
 
+- name: Create /data/code
+  file:
+    path: /data/code
+    state: directory
+    mode: '0755'
+
 - name: Create /code
   file:
     src: /data/code

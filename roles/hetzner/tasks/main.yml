@@ -3,6 +3,11 @@
   stat:
     path: /root/.oldroot/nfs/install/installimage
   register: rescue
-  
+
+- name: Debug rescue
+  debug:
+    var: rescue
+    verbosity: 2
+
 - include: hetzner-server_install.yml
   when: rescue.stat.exists and rescue_install|bool

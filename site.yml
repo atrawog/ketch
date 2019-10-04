@@ -9,14 +9,14 @@
   gather_facts: yes
   become: yes
   roles:
-    - { role: hetzner}
-    - { role: centos-plus}
+    - { role: hetzner, tags: hetzner}
+    - { role: centos-plus, tags: centosplus}
 
 - hosts: hetznerserver, localhost
   gather_facts: yes
   become: yes
   roles:
-    - { role: thinpool}
+    - { role: thinpool, tags: thinpool}
 
 - hosts: lxc
   gather_facts: yes
@@ -24,13 +24,12 @@
   roles:
     - { role: lxc, tags: lxc}
 
-
 - hosts: gan
   gather_facts: yes
   become: yes
   roles:
     - { role: gan, tags: gan}
-    
+
 - hosts: docker
   gather_facts: yes
   become: yes

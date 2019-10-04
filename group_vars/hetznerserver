@@ -1,5 +1,5 @@
 rescue_install: true
 boot_size: 512M
-root_size: 4G
+root_size: 8G
 osimage: CentOS-76-64-minimal.tar.gz
 installimage: installimage_mdraid.conf.j2
